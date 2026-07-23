@@ -2,7 +2,13 @@
 
 **Attention から Qwen-VL まで、Vision-Language Model（VLM）の進化を「実装しながら」追って学ぶ教材です。**
 
-各ステップを [marimo](https://marimo.io)（リアクティブな Python ノートブック）で用意しました。
+教材は 2 つの形で用意しています。どちらも中身は同じ実装です:
+
+1. **`notebooks/`** — [marimo](https://marimo.io)（リアクティブな Python ノートブック）。各章が自己完結し、
+   図とともに対話的に読める。**学ぶための入口**。
+2. **`vlm/`** — 同じロジックを整理した**再利用可能な NumPy パッケージ**（`import vlm`）。テスト付き。
+   **コードとして使う・読む・改造するための本体**。
+
 すべて **NumPy でゼロから実装** しているので、フレームワークの中身に隠れず、行列演算のレベルで仕組みが見えます。
 重い GPU も学習済みモデルのダウンロードも不要（最終章のオプションを除く）。CPU で数秒で動きます。
 
@@ -49,6 +55,31 @@
 
 各ノートブックは前の章の結論だけ前提にして、独立して動きます。順に進めるのがおすすめです。
 
+`vlm/` パッケージも各章に対応しています:
+
+| モジュール | 対応章 | 主な API |
+|-----------|--------|---------|
+| `vlm.attention` | 01 | `scaled_dot_product_attention`, `multi_head_attention`, `causal_mask` |
+| `vlm.transformer` | 02 | `layer_norm`, `feed_forward`, `sinusoidal_positional_encoding`, `TinyGPT` |
+| `vlm.vit` | 03 | `patchify`, `VisionTransformer` |
+| `vlm.clip` | 04 | `l2_normalize`, `cosine_sim_matrix`, `clip_loss`, `zero_shot_classify` |
+| `vlm.multimodal` | 05 | `simple_vision_encoder`, `build_projector`, `assemble_sequence`, `run_llm` |
+| `vlm.qwen` | 06 | `apply_rope`, `assign_mrope_positions`, `apply_mrope`, `patch_merger`, `n_vision_tokens` |
+
+---
+
+## プロジェクト構成
+
+```
+vlm-from-attention-to-qwen/
+├── notebooks/          学習用 marimo ノートブック（01〜06、各章自己完結）
+├── vlm/                再利用可能な NumPy パッケージ（import vlm）
+│   ├── attention.py    transformer.py  vit.py
+│   └── clip.py         multimodal.py   qwen.py
+├── tests/              pytest（各モジュールの shape と性質を検証）
+└── pyproject.toml
+```
+
 ---
 
 ## 使い方
@@ -56,13 +87,15 @@
 ### セットアップ
 
 ```bash
-# uv を使う場合（推奨）
-uv venv && source .venv/bin/activate
-uv pip install -e .
-
-# もしくは pip
+# ノートブックも動かす場合（marimo/matplotlib/pillow 込み）
 python -m venv .venv && source .venv/bin/activate
+pip install -e ".[notebooks]"
+
+# ライブラリだけ使う場合（NumPy のみ）
 pip install -e .
+
+# テストも走らせる場合
+pip install -e ".[dev]"
 ```
 
 ### ノートブックを開く（編集モード・リアクティブ）
@@ -72,20 +105,32 @@ marimo edit notebooks/01_attention.py
 ```
 
 セルを編集すると依存するセルが自動で再計算されます。まずはコードを読み、値を変えて挙動を観察してください。
+読み物として実行するだけなら `marimo run notebooks/01_attention.py`。
 
-### アプリとして実行する（読み物モード）
+### ライブラリとして使う
 
-```bash
-marimo run notebooks/01_attention.py
+```python
+import numpy as np
+from vlm.attention import scaled_dot_product_attention, causal_mask
+from vlm.qwen import apply_rope, assign_mrope_positions, apply_mrope
+
+rng = np.random.default_rng(0)
+X = rng.standard_normal((5, 8))
+out, weights = scaled_dot_product_attention(X, X, X, mask=causal_mask(5))
+
+# Qwen-VL の M-RoPE を試す
+pos, seg = assign_mrope_positions(n_text_before=2, grid_hw=(4, 4), n_text_after=3)
+rotated = apply_mrope(rng.standard_normal((len(seg), 36)), pos)
 ```
 
-### 全ノートブックの動作確認
+### テスト / 動作確認
 
 ```bash
-for f in notebooks/*.py; do
-  echo "== $f =="
-  python -m marimo export html "$f" -o /dev/null || echo "FAILED: $f"
-done
+pytest                      # vlm/ パッケージのテスト（29 件）
+
+# 全ノートブックが実行できるかの確認
+for f in notebooks/*.py; do python -m marimo export html "$f" -o /dev/null \
+  && echo "OK $f" || echo "FAILED $f"; done
 ```
 
 ---
