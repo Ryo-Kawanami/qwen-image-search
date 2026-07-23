@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.marimo.toml
+__marimo__/
+*.html
+.DS_Store
+.ipynb_checkpoints/

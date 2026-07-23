@@ -1,0 +1,22 @@
+[project]
+name = "vlm-from-attention-to-qwen"
+version = "0.1.0"
+description = "AttentionからQwen-VLまで、VLMの進化を実装しながら追って学ぶmarimoノートブック教材"
+requires-python = ">=3.10"
+dependencies = [
+    "marimo>=0.13",
+    "numpy>=1.26",
+    "matplotlib>=3.8",
+    "pillow>=10.0",
+]
+
+# 06章の「本物のQwen3-VLに触れる」オプション（重いので任意）
+[project.optional-dependencies]
+qwen = [
+    "torch>=2.2",
+    "transformers>=4.57",
+    "qwen-vl-utils>=0.0.14",
+]
+
+[tool.setuptools]
+py-modules = []
